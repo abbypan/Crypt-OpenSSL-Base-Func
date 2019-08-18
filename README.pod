@@ -17,6 +17,9 @@ Crypt::OpenSSL::Base::Func - Base Functions, using the OpenSSL libraries
     print $mac_1, "\n";
     #07:0A:16:B4:6B:4D:41:44:F7:9B:DD:9D:D0:4A:28:7C
 
+    #$ echo -n '6bc1bee22e409f96e93d7e117393172a' | xxd -r -p | openssl dgst -mac cmac -macopt cipher:aes-128-cbc -macopt hexkey:2b7e151628aed2a6abf7158809cf4f3c 
+    #CMAC(msg_1.bin)= 070a16b46b4d4144f79bdd9dd04a287c
+
     my $msg_2 = '6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411';
     my $mac_2 = aes_cmac($key, $msg_2, 'aes-128-cbc');
     print $mac_2, "\n";
