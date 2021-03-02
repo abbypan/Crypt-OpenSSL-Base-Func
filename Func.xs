@@ -6,8 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/bio.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 
 #define PACKAGE_NAME "Crypt::OpenSSL::Base::Func"
 
@@ -55,3 +59,49 @@ aes_cmac(key_hexstr, msg_hexstr, cipher_name)
   OUTPUT:
     RETVAL 
 
+
+unsigned char*
+ecdh(local_priv_pem, peer_pub_pem)
+    unsigned char *local_priv_pem;
+    unsigned char *peer_pub_pem;
+  PREINIT:
+    unsigned char *z_hexstr;
+  CODE:
+{
+
+    FILE *keyfile = fopen(local_priv_pem, "r");
+    EVP_PKEY *pkey = NULL;
+    pkey = PEM_read_PrivateKey(keyfile, NULL, NULL, NULL);
+    //printf("\nRead Local Private Key:\n");
+    //PEM_write_PrivateKey(stdout, pkey, NULL, NULL, 0, NULL, NULL);
+
+    FILE *peer_pubkeyfile = fopen(peer_pub_pem, "r");
+    EVP_PKEY *peer_pubkey = NULL;
+    peer_pubkey = PEM_read_PUBKEY(peer_pubkeyfile, NULL, NULL, NULL);
+    //printf("\nRead Peer PUBKEY Key:\n");
+    //PEM_write_PUBKEY(stdout, peer_pubkey);
+
+
+    EVP_PKEY_CTX *ctx;
+    unsigned char *z;
+    size_t zlen;
+    ctx = EVP_PKEY_CTX_new(pkey, NULL);
+
+    EVP_PKEY_derive_init(ctx);
+
+    EVP_PKEY_derive_set_peer(ctx, peer_pubkey);
+
+    EVP_PKEY_derive(ctx, NULL, &zlen);
+
+    z = OPENSSL_malloc(zlen);
+
+    EVP_PKEY_derive(ctx, z, &zlen);
+
+    unsigned char* z_hexstr = OPENSSL_buf2hexstr(z, zlen);
+
+    OPENSSL_free(z);
+
+    RETVAL = z_hexstr;
+}
+  OUTPUT:
+    RETVAL 

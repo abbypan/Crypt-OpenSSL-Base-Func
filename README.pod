@@ -8,7 +8,7 @@ Crypt::OpenSSL::Base::Func - Base Functions, using the OpenSSL libraries
 
 =head1 SYNOPSIS
 
-    use Crypt::OpenSSL::Base::Func qw/aes_cmac/;
+    use Crypt::OpenSSL::Base::Func qw/aes_cmac ecdh/;
 
     my $key = '2b7e151628aed2a6abf7158809cf4f3c';
 
@@ -27,15 +27,16 @@ Crypt::OpenSSL::Base::Func - Base Functions, using the OpenSSL libraries
 
 =head1 DESCRIPTION
 
-Use OpenSSL libraries, for the function defined in:
-
-RFC4493 : aes_cmac
+Crypt::OpenSSL::Base::Func - Base Functions, using the OpenSSL libraries
 
 =head1 Methods
 
 =head2 aes_cmac
 
+RFC4493: aes_cmac
+
     mac_hexstr = aes_cmac(key_hexstr, plaintext_hexstr, cipher_name)
 
-see also openssl/crypto/cmac/cmac.c
-
+=head2 ecdh
+    
+    z = ecdh(local_priv_pem_file, peer_pub_pem_file)
