@@ -23,7 +23,7 @@ BEGIN {
 }            ## no critic qw(RequireCheckingReturnValueOfEval);
 
 our @ISA = qw(Exporter DynaLoader); 
-our @EXPORT = qw( aes_cmac ecdh ); 
+our @EXPORT = qw( aes_cmac ecdh PKCS12_key_gen PKCS5_PBKDF2_HMAC ); 
 
 1;
 
