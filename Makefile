@@ -1,7 +1,7 @@
 # This Makefile is for the Crypt::OpenSSL::Base::Func extension to perl.
 #
 # It was generated automatically by MakeMaker version
-# 7.60 (Revision: 76000) from the contents of
+# 7.62 (Revision: 76200) from the contents of
 # Makefile.PL. Don't edit this file, edit Makefile.PL instead.
 #
 #       ANY CHANGES MADE HERE WILL BE LOST!
@@ -20,12 +20,12 @@
 #     INC => q[-I/usr/local/include]
 #     LIBS => [q[-L/usr/local -L/usr/local/lib -lssl -lcrypto]]
 #     LICENSE => q[perl]
-#     META_MERGE => { build_requires=>{ Test=>q[0] }, configure_requires=>{ Crypt::OpenSSL::Guess=>q[0.11] }, recommends=>{  }, resources=>{ bugtracker=>q[https://github.com/abbypan/Crypt-OpenSSL-Base-Func/issues], homepage=>q[http://github.com/abbypan/Crypt-OpenSSL-Base-Func], license=>q[http://dev.perl.org/licenses/], repository=>q[http://github.com/abbypan/Crypt-OpenSSL-Base-Func] } }
+#     META_MERGE => { build_requires=>{ Crypt::OpenSSL::Guess=>q[0.11], Test=>q[0] }, configure_requires=>{ Crypt::OpenSSL::Guess=>q[0.11] }, recommends=>{ Crypt::OpenSSL::Bignum=>q[0] }, resources=>{ bugtracker=>q[https://github.com/abbypan/Crypt-OpenSSL-Base-Func/issues], homepage=>q[http://github.com/abbypan/Crypt-OpenSSL-Base-Func], license=>q[http://dev.perl.org/licenses/], repository=>q[http://github.com/abbypan/Crypt-OpenSSL-Base-Func] } }
 #     MIN_PERL_VERSION => q[5.006]
 #     NAME => q[Crypt::OpenSSL::Base::Func]
 #     OBJECT => q[Func.o]
 #     PL_FILES => {  }
-#     PREREQ_PM => { Test::More=>q[0] }
+#     PREREQ_PM => { Crypt::OpenSSL::Guess=>q[0.11], Test::More=>q[0] }
 #     TEST_REQUIRES => {  }
 #     VERSION_FROM => q[Func.pm]
 #     clean => { FILES=>q[Crypt-OpenSSL-Base-*] }
@@ -36,12 +36,12 @@
 
 # --- MakeMaker const_config section:
 
-# These definitions are from config.sh (via /usr/lib/perl5/5.32/core_perl/Config.pm).
+# These definitions are from config.sh (via /usr/lib/perl5/5.34/core_perl/Config.pm).
 # They may have been overridden via Makefile.PL or on the command line.
 AR = ar
 CC = cc
 CCCDLFLAGS = -fPIC
-CCDLFLAGS = -Wl,-E -Wl,-rpath,/usr/lib/perl5/5.32/core_perl/CORE
+CCDLFLAGS = -Wl,-E -Wl,-rpath,/usr/lib/perl5/5.34/core_perl/CORE
 DLEXT = so
 DLSRC = dl_dlopen.xs
 EXE_EXT = 
@@ -53,12 +53,12 @@ LIBC = libc-2.33.so
 LIB_EXT = .a
 OBJ_EXT = .o
 OSNAME = linux
-OSVERS = 5.10.3-arch1-1
+OSVERS = 5.12.15-arch1-1
 RANLIB = :
 SITELIBEXP = /usr/share/perl5/site_perl
-SITEARCHEXP = /usr/lib/perl5/5.32/site_perl
+SITEARCHEXP = /usr/lib/perl5/5.34/site_perl
 SO = so
-VENDORARCHEXP = /usr/lib/perl5/5.32/vendor_perl
+VENDORARCHEXP = /usr/lib/perl5/5.34/vendor_perl
 VENDORLIBEXP = /usr/share/perl5/vendor_perl
 
 
@@ -126,15 +126,15 @@ DESTINSTALLSITEMAN3DIR = $(DESTDIR)$(INSTALLSITEMAN3DIR)
 INSTALLVENDORMAN3DIR = $(INSTALL_BASE)/man/man3
 DESTINSTALLVENDORMAN3DIR = $(DESTDIR)$(INSTALLVENDORMAN3DIR)
 PERL_LIB = /usr/share/perl5/core_perl
-PERL_ARCHLIB = /usr/lib/perl5/5.32/core_perl
-PERL_ARCHLIBDEP = /usr/lib/perl5/5.32/core_perl
+PERL_ARCHLIB = /usr/lib/perl5/5.34/core_perl
+PERL_ARCHLIBDEP = /usr/lib/perl5/5.34/core_perl
 LIBPERL_A = libperl.a
 FIRST_MAKEFILE = Makefile
 MAKEFILE_OLD = Makefile.old
 MAKE_APERL_FILE = Makefile.aperl
 PERLMAINCC = $(CC)
-PERL_INC = /usr/lib/perl5/5.32/core_perl/CORE
-PERL_INCDEP = /usr/lib/perl5/5.32/core_perl/CORE
+PERL_INC = /usr/lib/perl5/5.34/core_perl/CORE
+PERL_INCDEP = /usr/lib/perl5/5.34/core_perl/CORE
 PERL = "/usr/bin/perl"
 FULLPERL = "/usr/bin/perl"
 ABSPERL = $(PERL)
@@ -149,9 +149,9 @@ PERM_DIR = 755
 PERM_RW = 644
 PERM_RWX = 755
 
-MAKEMAKER   = /usr/share/perl5/site_perl/ExtUtils/MakeMaker.pm
-MM_VERSION  = 7.60
-MM_REVISION = 76000
+MAKEMAKER   = /usr/share/perl5/core_perl/ExtUtils/MakeMaker.pm
+MM_VERSION  = 7.62
+MM_REVISION = 76200
 
 # FULLEXT = Pathname for extension directory (eg Foo/Bar/Oracle).
 # BASEEXT = Basename part of FULLEXT. May be just equal FULLEXT. (eg Oracle)
@@ -203,7 +203,7 @@ TO_INST_PM = Func.pm
 
 
 # --- MakeMaker platform_constants section:
-MM_Unix_VERSION = 7.60
+MM_Unix_VERSION = 7.62
 PERL_MALLOC_DEF = -DPERL_EXTMALLOC_DEF -Dmalloc=Perl_malloc -Dfree=Perl_mfree -Drealloc=Perl_realloc -Dcalloc=Perl_calloc
 
 
@@ -591,13 +591,14 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) 'author:' >> META_new.yml
 	$(NOECHO) $(ECHO) '  - '\''Lanlan Pan <abbypan@gmail.com>'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'build_requires:' >> META_new.yml
+	$(NOECHO) $(ECHO) '  Crypt::OpenSSL::Guess: '\''0.11'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  ExtUtils::MakeMaker: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  Test: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'configure_requires:' >> META_new.yml
 	$(NOECHO) $(ECHO) '  Crypt::OpenSSL::Guess: '\''0.11'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  ExtUtils::MakeMaker: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'dynamic_config: 1' >> META_new.yml
-	$(NOECHO) $(ECHO) 'generated_by: '\''ExtUtils::MakeMaker version 7.60, CPAN::Meta::Converter version 2.150010'\''' >> META_new.yml
+	$(NOECHO) $(ECHO) 'generated_by: '\''ExtUtils::MakeMaker version 7.62, CPAN::Meta::Converter version 2.150010'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'license: perl' >> META_new.yml
 	$(NOECHO) $(ECHO) 'meta-spec:' >> META_new.yml
 	$(NOECHO) $(ECHO) '  url: http://module-build.sourceforge.net/META-spec-v1.4.html' >> META_new.yml
@@ -607,8 +608,10 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '  directory:' >> META_new.yml
 	$(NOECHO) $(ECHO) '    - t' >> META_new.yml
 	$(NOECHO) $(ECHO) '    - inc' >> META_new.yml
-	$(NOECHO) $(ECHO) 'recommends: {}' >> META_new.yml
+	$(NOECHO) $(ECHO) 'recommends:' >> META_new.yml
+	$(NOECHO) $(ECHO) '  Crypt::OpenSSL::Bignum: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'requires:' >> META_new.yml
+	$(NOECHO) $(ECHO) '  Crypt::OpenSSL::Guess: '\''0.11'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  Test::More: '\''0'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) '  perl: '\''5.006'\''' >> META_new.yml
 	$(NOECHO) $(ECHO) 'resources:' >> META_new.yml
@@ -626,7 +629,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '      "Lanlan Pan <abbypan@gmail.com>"' >> META_new.json
 	$(NOECHO) $(ECHO) '   ],' >> META_new.json
 	$(NOECHO) $(ECHO) '   "dynamic_config" : 1,' >> META_new.json
-	$(NOECHO) $(ECHO) '   "generated_by" : "ExtUtils::MakeMaker version 7.60, CPAN::Meta::Converter version 2.150010",' >> META_new.json
+	$(NOECHO) $(ECHO) '   "generated_by" : "ExtUtils::MakeMaker version 7.62, CPAN::Meta::Converter version 2.150010",' >> META_new.json
 	$(NOECHO) $(ECHO) '   "license" : [' >> META_new.json
 	$(NOECHO) $(ECHO) '      "perl_5"' >> META_new.json
 	$(NOECHO) $(ECHO) '   ],' >> META_new.json
@@ -644,6 +647,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '   "prereqs" : {' >> META_new.json
 	$(NOECHO) $(ECHO) '      "build" : {' >> META_new.json
 	$(NOECHO) $(ECHO) '         "requires" : {' >> META_new.json
+	$(NOECHO) $(ECHO) '            "Crypt::OpenSSL::Guess" : "0.11",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "ExtUtils::MakeMaker" : "0",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "Test" : "0"' >> META_new.json
 	$(NOECHO) $(ECHO) '         }' >> META_new.json
@@ -655,8 +659,11 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '         }' >> META_new.json
 	$(NOECHO) $(ECHO) '      },' >> META_new.json
 	$(NOECHO) $(ECHO) '      "runtime" : {' >> META_new.json
-	$(NOECHO) $(ECHO) '         "recommends" : {},' >> META_new.json
+	$(NOECHO) $(ECHO) '         "recommends" : {' >> META_new.json
+	$(NOECHO) $(ECHO) '            "Crypt::OpenSSL::Bignum" : "0"' >> META_new.json
+	$(NOECHO) $(ECHO) '         },' >> META_new.json
 	$(NOECHO) $(ECHO) '         "requires" : {' >> META_new.json
+	$(NOECHO) $(ECHO) '            "Crypt::OpenSSL::Guess" : "0.11",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "Test::More" : "0",' >> META_new.json
 	$(NOECHO) $(ECHO) '            "perl" : "5.006"' >> META_new.json
 	$(NOECHO) $(ECHO) '         }' >> META_new.json
@@ -676,7 +683,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) '      }' >> META_new.json
 	$(NOECHO) $(ECHO) '   },' >> META_new.json
 	$(NOECHO) $(ECHO) '   "version" : "0.02",' >> META_new.json
-	$(NOECHO) $(ECHO) '   "x_serialization_backend" : "JSON::PP version 4.04"' >> META_new.json
+	$(NOECHO) $(ECHO) '   "x_serialization_backend" : "JSON::PP version 4.06"' >> META_new.json
 	$(NOECHO) $(ECHO) '}' >> META_new.json
 	-$(NOECHO) $(MV) META_new.json $(DISTVNAME)/META.json
 
@@ -959,6 +966,7 @@ PERL_HDRS = \
         $(PERL_INCDEP)/perl.h            \
         $(PERL_INCDEP)/perl_inc_macro.h            \
         $(PERL_INCDEP)/perl_langinfo.h            \
+        $(PERL_INCDEP)/perl_siphash.h            \
         $(PERL_INCDEP)/perlapi.h            \
         $(PERL_INCDEP)/perlio.h            \
         $(PERL_INCDEP)/perliol.h            \
@@ -975,7 +983,6 @@ PERL_HDRS = \
         $(PERL_INCDEP)/regnodes.h            \
         $(PERL_INCDEP)/sbox32_hash.h            \
         $(PERL_INCDEP)/scope.h            \
-        $(PERL_INCDEP)/stadtx_hash.h            \
         $(PERL_INCDEP)/sv.h            \
         $(PERL_INCDEP)/thread.h            \
         $(PERL_INCDEP)/time64.h            \
@@ -1021,7 +1028,7 @@ $(FIRST_MAKEFILE) : Makefile.PL $(CONFIGDEP)
 # --- MakeMaker makeaperl section ---
 MAP_TARGET    = perl
 FULLPERL      = "/usr/bin/perl"
-MAP_PERLINC   = "-Iblib/arch" "-Iblib/lib" "-I/usr/lib/perl5/5.32/core_perl" "-I/usr/share/perl5/core_perl"
+MAP_PERLINC   = "-Iblib/arch" "-Iblib/lib" "-I/usr/lib/perl5/5.34/core_perl" "-I/usr/share/perl5/core_perl"
 
 $(MAP_TARGET) :: $(MAKE_APERL_FILE)
 	$(MAKE) $(USEMAKEFILE) $(MAKE_APERL_FILE) $@
@@ -1077,8 +1084,9 @@ ppd :
 	$(NOECHO) $(ECHO) '    <AUTHOR>Lanlan Pan &lt;abbypan@gmail.com&gt;</AUTHOR>' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '    <IMPLEMENTATION>' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '        <PERLCORE VERSION="5,006,0,0" />' >> Crypt-OpenSSL-Base-Func.ppd
+	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Crypt::OpenSSL::Guess" VERSION="0.11" />' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '        <REQUIRE NAME="Test::More" />' >> Crypt-OpenSSL-Base-Func.ppd
-	$(NOECHO) $(ECHO) '        <ARCHITECTURE NAME="x86_64-linux-thread-multi-5.32" />' >> Crypt-OpenSSL-Base-Func.ppd
+	$(NOECHO) $(ECHO) '        <ARCHITECTURE NAME="x86_64-linux-thread-multi-5.34" />' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '        <CODEBASE HREF="" />' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '    </IMPLEMENTATION>' >> Crypt-OpenSSL-Base-Func.ppd
 	$(NOECHO) $(ECHO) '</SOFTPKG>' >> Crypt-OpenSSL-Base-Func.ppd

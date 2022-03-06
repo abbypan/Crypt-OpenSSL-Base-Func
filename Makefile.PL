@@ -20,6 +20,7 @@ WriteMakefile(
     ( $ExtUtils::MakeMaker::VERSION >= 6.3002 ? ( 'LICENSE' => 'perl', ) : () ),
     'PREREQ_PM' => {
         'Test::More'             => 0,
+        'Crypt::OpenSSL::Guess' => '0.11',
     },
     'OBJECT' => 'Func.o',
     'LIBS'   => [openssl_lib_paths() . ' -lssl -lcrypto'],
@@ -36,13 +37,14 @@ WriteMakefile(
         ? (
             'META_MERGE' => {
                 recommends => {
-                    #'Crypt::OpenSSL::Bignum' => 0,
+                    'Crypt::OpenSSL::Bignum' => 0,
                 },
                 configure_requires => {
                     'Crypt::OpenSSL::Guess' => '0.11',
                 },
                 build_requires => {
                     'Test' => 0,    # For testing
+                    'Crypt::OpenSSL::Guess' => '0.11',
                 },
                 resources => {
                     'license'    => 'http://dev.perl.org/licenses/',
@@ -51,7 +53,7 @@ WriteMakefile(
                     'repository' => 'http://github.com/abbypan/Crypt-OpenSSL-Base-Func',
                 }
             }
-          )
+        )
         : ()
     ),
 );

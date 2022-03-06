@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/bn.h>
 #include <openssl/bio.h>
 #include <openssl/cmac.h>
 #include <openssl/crypto.h>
@@ -168,6 +169,46 @@ PKCS5_PBKDF2_HMAC(password, salt_hexstr, iteration, digest_name, outlen)
     OPENSSL_free(out);
 
     RETVAL = out_hexstr;
+}
+  OUTPUT:
+    RETVAL 
+
+
+unsigned char*
+bn_sqrt_mod(a, p)
+    unsigned char *a;
+    unsigned char *p;
+  PREINIT:
+    unsigned char *s;
+  CODE:
+{
+
+    BN_CTX *ctx;
+    BIGNUM *bn_a, *bn_p, *bn_s, *ret;
+
+    ctx = BN_CTX_new();
+
+    bn_a = BN_new();
+    BN_hex2bn(&bn_a, a); 
+
+    bn_p = BN_new();
+    BN_hex2bn(&bn_p, p);
+
+    bn_s = BN_new();
+    ret = BN_mod_sqrt(bn_s, bn_a, bn_p, ctx);
+
+    if(ret != NULL){
+        s = BN_bn2hex(bn_s);
+    }else{
+        s = "";
+    }
+
+    BN_free(bn_a);
+    BN_free(bn_p);
+    BN_free(bn_s);
+    BN_CTX_free(ctx);
+
+    RETVAL = s;
 }
   OUTPUT:
     RETVAL 
