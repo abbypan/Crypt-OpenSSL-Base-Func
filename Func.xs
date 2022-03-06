@@ -175,7 +175,7 @@ PKCS5_PBKDF2_HMAC(password, salt_hexstr, iteration, digest_name, outlen)
 
 
 unsigned char*
-bn_sqrt_mod(a, p)
+bn_mod_sqrt(a, p)
     unsigned char *a;
     unsigned char *p;
   PREINIT:
