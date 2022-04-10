@@ -83,4 +83,4 @@ see also openssl/crypto/bn/bn_sqrt.c
 
 =head2  ecdh_pkey
 
-    my $zlen = ecdh_pkey($pkey_priv, $pkey_peer_pub, \$z);
+    my $z = ecdh_pkey($pkey_priv, $pkey_peer_pub);

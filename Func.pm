@@ -47,6 +47,7 @@ i2osp
 aes_cmac 
 ecdh 
 ecdh_pkey
+ecdh_pkey_raw
 hex2point
 bn_mod_sqrt 
 digest
