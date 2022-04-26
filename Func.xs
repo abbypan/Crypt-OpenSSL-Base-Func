@@ -67,6 +67,9 @@ int ecdh_pkey_raw(EVP_PKEY *pkey_priv, EVP_PKEY *pkey_peer_pub, unsigned char **
 
 int pem_write_evp_pkey(char* dst_fname, EVP_PKEY* pkey, int is_priv)
 
+char* pem_read_priv_hex(char* keyfile) 
+
+char* pem_read_pub_hex(char* keyfile, int point_compress_t)
 
 
 EC_POINT*

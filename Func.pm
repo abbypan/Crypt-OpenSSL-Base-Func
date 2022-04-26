@@ -52,6 +52,8 @@ pem_write_evp_pkey
 random_bn
 sn_hex2point
 sn_point2hex
+pem_read_priv_hex
+pem_read_pub_hex
 ); 
 
 our @EXPORT_OK = @EXPORT;

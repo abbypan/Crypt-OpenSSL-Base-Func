@@ -46,6 +46,34 @@ int pem_write_evp_pkey(char* dst_fname, EVP_PKEY* pkey, int is_priv)  {
     return 1;
 }
 
+char* pem_read_priv_hex(char* keyfile) {
+
+    FILE *inf = fopen(keyfile, "r");
+    EVP_PKEY *pkey = NULL;
+    pkey = PEM_read_PrivateKey(inf, NULL, NULL, NULL);
+
+    EC_KEY *ec_key = EVP_PKEY_get1_EC_KEY(pkey);
+    const BIGNUM *priv_bn = EC_KEY_get0_private_key(ec_key);
+    char *priv_hex = BN_bn2hex(priv_bn);
+    return priv_hex;
+}
+
+char* pem_read_pub_hex(char* keyfile, int point_compress_t) {
+
+    FILE *inf = fopen(keyfile, "r");
+    EVP_PKEY *pkey = NULL;
+    pkey = PEM_read_PUBKEY(inf, NULL, NULL, NULL);
+
+    EC_KEY *ec_key = EVP_PKEY_get1_EC_KEY(pkey);
+    const EC_POINT *ec_point = EC_KEY_get0_public_key(ec_key);
+
+    const EC_GROUP *group = EC_KEY_get0_group(ec_key);
+    BN_CTX *ctx = BN_CTX_new();
+    char *pub_hex = EC_POINT_point2hex(group, ec_point, point_compress_t, ctx);
+
+    return pub_hex;
+}
+
 
 EVP_PKEY* pem_read_pkey(char* keyfile, int is_priv) {
 
