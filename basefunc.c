@@ -109,3 +109,101 @@ int ecdh_pkey_raw(EVP_PKEY *pkey_priv, EVP_PKEY *pkey_peer_pub, unsigned char **
 
     return (int) zlen;
 }
+
+int aead_encrypt_raw(unsigned char *cipher_name, 
+        unsigned char *plaintext, int plaintext_len,
+                unsigned char *aad, int aad_len,
+                unsigned char *key,
+                unsigned char *iv, int iv_len,
+                unsigned char **ciphertext_ref,
+                unsigned char *tag, int tag_len)
+{
+    EVP_CIPHER_CTX *ctx;
+
+    int len;
+    int ciphertext_len;
+
+    unsigned char *ciphertext = *ciphertext_ref;
+
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
+
+    const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name);
+    if(1 != EVP_EncryptInit_ex(ctx, cipher, NULL, NULL, NULL))
+        return -1;
+
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL))
+        return -1;
+
+    if(1 != EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv))
+        return -1;
+
+    if(1 != EVP_EncryptUpdate(ctx, NULL, &len, aad, aad_len))
+        return -1;
+
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
+        return -1;
+    ciphertext_len = len;
+
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
+        return -1;
+    ciphertext_len += len;
+
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag_len, tag))
+        return -1;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return ciphertext_len;
+}
+
+int aead_decrypt_raw(
+        unsigned char *cipher_name, 
+        unsigned char *ciphertext, int ciphertext_len,
+                unsigned char *aad, int aad_len,
+                unsigned char *tag, int tag_len, 
+                unsigned char *key,
+                unsigned char *iv, int iv_len,
+                unsigned char **plaintext_ref)
+{
+    EVP_CIPHER_CTX *ctx;
+    int len;
+    int plaintext_len;
+    int ret;
+
+    unsigned char *plaintext = *plaintext_ref;
+
+    if(!(ctx = EVP_CIPHER_CTX_new()))
+        return -1;
+
+    const EVP_CIPHER *cipher = EVP_get_cipherbyname(cipher_name);
+    if(!EVP_DecryptInit_ex(ctx, cipher, NULL, NULL, NULL))
+        return -1;
+
+    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv_len, NULL))
+        return -1;
+
+    if(!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv))
+        return -1;
+
+    if(!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len))
+        return -1;
+
+    if(!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+        return -1;
+    plaintext_len = len;
+
+    if(!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag_len, tag))
+        return -1;
+
+    ret = EVP_DecryptFinal_ex(ctx, plaintext + len, &len);
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    if(ret > 0) {
+        plaintext_len += len;
+        return plaintext_len;
+    } else {
+        return -1;
+    }
+}
