@@ -13,7 +13,7 @@ use Crypt::OpenSSL::Bignum;
 use Math::BigInt;
 use POSIX;
 
-our $VERSION = '0.034';
+our $VERSION = '0.035';
 
 our @ISA = qw(Exporter);
 
