@@ -1,9 +1,5 @@
 basefunc.c
 Changes
-Crypt-OpenSSL-Base-Func-0.034.tar.gz
-Func.bs
-Func.c
-Func.o
 Func.pm
 Func.xs
 LICENSE
@@ -20,6 +16,7 @@ t/05.bn_mod_sqrt.t
 t/06.OBJ_sn2nid.t
 t/07.random_bn.t
 t/08.aead_encrypt.t
+t/09.aead_decrypt.t
 t/x25519_a_priv.pem
 t/x25519_a_pub.pem
 t/x25519_b_priv.pem
