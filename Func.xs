@@ -155,7 +155,6 @@ SV* aead_encrypt(cipher_name, plaintext_SV, aad_SV, key_SV, iv_SV, tag_len)
     ciphertext = malloc(plaintext_len);
     ciphertext_len = aead_encrypt_raw(cipher_name, plaintext, plaintext_len, aad, aad_len, key, iv, iv_len, &ciphertext, tag, tag_len);
 
-
     ciphertext_SV = newSVpv(ciphertext, ciphertext_len);
     tag_SV = newSVpv(tag, tag_len);
 
