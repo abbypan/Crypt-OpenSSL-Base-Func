@@ -25,8 +25,8 @@ EC_POINT_get_affine_coordinates
 EC_POINT_hex2point
 EC_POINT_point2hex
 EC_POINT_set_affine_coordinates
-EVP_MD_block_size
-EVP_MD_size
+EVP_MD_get_block_size
+EVP_MD_get_size
 EVP_PKEY_assign_EC_KEY
 EVP_PKEY_get1_EC_KEY
 EVP_PKEY_new
@@ -189,10 +189,11 @@ sub get_ec_params {
     Crypt::OpenSSL::EC::EC_GROUP::get_cofactor($group, $cofactor, $ctx);
 
     return { 
-        nid => $nid, group =>$group, 
-        p => $p, a=> $a, b=>$b, 
-        degree => $degree, order=> $order, $cofactor=>$cofactor, 
-        ctx=> $ctx 
+        nid => $nid, 
+        name => $group_name, 
+        group =>$group, 
+        p => $p, a=> $a, b=>$b, degree => $degree, order=> $order, cofactor=>$cofactor, 
+        ctx=> $ctx,  
     };
 } 
 
