@@ -35,6 +35,12 @@ EVP_PKEY* EVP_PKEY_new()
 
 char *EC_POINT_point2hex(const EC_GROUP *group, const EC_POINT *p, point_conversion_form_t form, BN_CTX *ctx)
 
+EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *e, const unsigned char *key, size_t keylen);
+
+EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *e, const unsigned char *key, size_t keylen);
+
+
+
 const BIGNUM *EC_GROUP_get0_cofactor(const EC_GROUP *group)
 
 const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key)
@@ -57,7 +63,9 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key)
 
 int OBJ_sn2nid (const char *s)
 
+unsigned char* hex2bin(const char* hexstr, size_t* size)
 
+char *bin2hex(const unsigned char *bin, size_t len)
 
 EVP_PKEY* evp_pkey_from_point_hex(EC_GROUP* group, char* point_hex, BN_CTX* ctx)
 
