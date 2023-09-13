@@ -6,7 +6,7 @@ use warnings;
 use Test::More;
 use Crypt::OpenSSL::Base::Func;
 use FindBin;
-use Smart::Comments;
+#use Smart::Comments;
 use Data::Dumper;
 
 
@@ -76,12 +76,14 @@ is($priv_hex, $priv_hex_gen, "gen_ec_key $group_name");
 #my $pkey4=gen_ec_key('X25519', ''); 
 #pem_write_evp_pkey("/tmp/d.pem", $pkey4, 1);
 
-#my $pkey3=gen_ec_key('prime256v1', '');
-#pem_write_evp_pkey("/tmp/c.pem", $pkey3, 1);
+#my $pkey3=gen_ec_key('prime256v1', '88A91851D93AB3E4F2636BABC60D6CE9D1AEE2B86DECE13FA8590D955A08D987');
+#write_key_to_pem("/tmp/c.pem", $pkey3);
 #my $priv_hex3 = read_ec_key($pkey3);
-#
-#my $priv_hex3= read_ec_key($pkey3);
 #print "$priv_hex3\n";
+
+my $k = generate_ec_key('prime256v1', '88A91851D93AB3E4F2636BABC60D6CE9D1AEE2B86DECE13FA8590D955A08D987');
+
+### $k
 
 #my $params_raw ;
 #my $params_pub;

@@ -92,6 +92,21 @@ unsigned char* read_ec_key_from_pem(unsigned char* keyfile)
 
 }
 
+unsigned char* export_pubkey(EVP_PKEY *priv_pkey)
+{
+    unsigned char *pubkey = NULL;
+    size_t pubkey_len;
+    unsigned char *pub_hex = NULL;
+
+    pubkey_len = EVP_PKEY_get1_encoded_public_key(priv_pkey, &pubkey);
+    pub_hex = bin2hex(pubkey, pubkey_len);
+
+    if(pubkey) OPENSSL_free(pubkey);
+
+    return pub_hex;
+}
+
+
 unsigned char* read_ec_pubkey(EVP_PKEY *pkey)
 {
 
@@ -110,6 +125,42 @@ unsigned char* read_ec_pubkey(EVP_PKEY *pkey)
     OPENSSL_free(pub);
     
     return pub_hex;
+}
+
+EVP_PKEY* evp_pkey_from_point_hex(EC_GROUP* group, char* point_hex, BN_CTX* ctx)  
+{
+    EC_KEY* ec_key = EC_KEY_new();
+    EC_KEY_set_group(ec_key, group);
+
+    EC_POINT* ec_pub_point = EC_POINT_new(group);
+    ec_pub_point = EC_POINT_hex2point(group, point_hex, ec_pub_point, ctx);
+    EC_KEY_set_public_key(ec_key, ec_pub_point);
+
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(pkey, ec_key);
+
+    return pkey;
+}
+
+EVP_PKEY* evp_pkey_from_priv_hex(EC_GROUP* group, char* priv_hex)  
+{
+    EC_KEY* ec_key = EC_KEY_new();
+    EC_KEY_set_group(ec_key, group);
+    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
+
+    BIGNUM *priv_bn = BN_new();
+    BN_hex2bn(&priv_bn, priv_hex);
+    EC_KEY_set_private_key(ec_key, (const BIGNUM *) priv_bn);
+
+    EC_POINT* ec_pub_point = EC_POINT_new(group);
+    EC_POINT_mul(group, ec_pub_point, priv_bn, NULL, NULL, NULL);
+    EC_KEY_set_public_key(ec_key, ec_pub_point);
+
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(pkey, ec_key);
+
+    return pkey;
+
 }
 
 
@@ -574,8 +625,28 @@ unsigned char* get_pkey_utf8_string_param(EVP_PKEY *pkey, unsigned char *param_n
     return s;
 }
 
+EC_POINT* hex2point(EC_GROUP *group, unsigned char* point_hex)
+  {
+    BN_CTX *ctx = BN_CTX_new();
+
+    EC_POINT* ec_point = EC_POINT_new(group);
+    ec_point = EC_POINT_hex2point(group, point_hex, ec_point, ctx);
+
+    BN_CTX_free(ctx);
+
+    return  ec_point;
+  }
+
 
 MODULE = Crypt::OpenSSL::Base::Func		PACKAGE = Crypt::OpenSSL::Base::Func		
+
+EVP_PKEY* evp_pkey_from_priv_hex(EC_GROUP* group, char* priv_hex)  
+
+EVP_PKEY* evp_pkey_from_point_hex(EC_GROUP* group, char* point_hex, BN_CTX* ctx)  
+
+unsigned char* export_pubkey(EVP_PKEY *priv_pkey)
+
+EC_POINT* hex2point(EC_GROUP *group, unsigned char* point_hex)
 
 EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
 
@@ -614,6 +685,8 @@ void print_pkey_gettable_params(EVP_PKEY *pkey)
 
 int OBJ_sn2nid (const char *s)
 
+EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey)
+
 const EVP_MD *EVP_get_digestbyname(const char *name)
 
 int EVP_MD_get_block_size(const EVP_MD *md)
@@ -623,6 +696,8 @@ int EVP_MD_get_size(const EVP_MD *md)
 int EC_GROUP_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a, BIGNUM *b, BN_CTX *ctx)
 
 int EC_POINT_set_affine_coordinates(const EC_GROUP *group, EC_POINT *p, const BIGNUM *x, const BIGNUM *y, BN_CTX *ctx)
+
+int EC_POINT_get_affine_coordinates(const EC_GROUP *group, const EC_POINT *p, BIGNUM *x, BIGNUM *y, BN_CTX *ctx)
 
 
 
@@ -811,3 +886,5 @@ SV* aead_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* aad_SV, SV* 
 }
   OUTPUT:
     RETVAL
+
+
