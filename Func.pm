@@ -17,10 +17,16 @@ our $VERSION = '0.037';
 our @ISA = qw(Exporter);
 
 our @EXPORT = qw( 
+BN_bn2hex
+hex2bn
 export_pubkey
 hex2point
 bn_mod_sqrt 
 aes_cmac 
+hmac
+hkdf
+hkdf_extract
+hkdf_expand
 pkcs12_key_gen 
 pkcs5_pbkdf2_hmac
 digest
@@ -38,6 +44,14 @@ read_priv_pkey_from_pem
 read_pub_pkey_from_pem
 aead_encrypt
 aead_decrypt
+aes_ctr_encrypt
+aes_ctr_decrypt
+ecdsa_sign
+ecdsa_verify
+export_rsa_public_pkey
+rsa_oaep_encrypt_raw
+rsa_oaep_decrypt_raw
+
 print_pkey_gettable_params
 get_pkey_bn_param
 get_pkey_octet_string_param
@@ -69,6 +83,25 @@ our @EXPORT_OK = @EXPORT;
 
 require XSLoader;
 XSLoader::load( 'Crypt::OpenSSL::Base::Func', $VERSION );
+
+sub hkdf {
+# define EVP_KDF_HKDF_MODE_EXTRACT_AND_EXPAND  0
+# define EVP_KDF_HKDF_MODE_EXTRACT_ONLY        1
+# define EVP_KDF_HKDF_MODE_EXPAND_ONLY         2
+    my ($digest_name, $k, $salt, $info, $len) = @_;
+    return hkdf_main(0, $digest_name, $k, $salt, $info, $len);
+}
+
+sub hkdf_extract {
+    my ($digest_name, $k, $salt, $info, $len) = @_;
+    return hkdf_main(1, $digest_name, $k, $salt, $info, $len);
+}
+
+sub hkdf_expand {
+    my ($digest_name, $k, $salt, $info, $len) = @_;
+    return hkdf_main(2, $digest_name, $k, $salt, $info, $len);
+}
+
 
 sub sn_hex2point {
     my ($group_name, $point_hex) = @_;

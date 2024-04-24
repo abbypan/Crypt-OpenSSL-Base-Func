@@ -17,12 +17,12 @@ my $group = Crypt::OpenSSL::EC::EC_GROUP::new_by_curve_name($nid);
 # $group
 my $ctx   = Crypt::OpenSSL::Bignum::CTX->new();
 
-my $pub_hex = read_ec_pubkey_from_pem("$FindBin::RealBin/ecc_nist_p256_pub.pem");
+my $pub_hex = read_ec_pubkey_from_pem("$FindBin::RealBin/ecc_nist_p256_pub.pem", 0);
 is($pub_hex, '04259CB35D781B478BF785DE062E1A3577348290BC05E36F3B42B496CF59BF03E965FB768014225FB520B5CBFC2F52240CD80536CAC8716412EA1AF78D4962C0AF', "read_ec_pubkey_from_pem $group_name");
 
 #my $pub_pkey = evp_pkey_from_point_hex($group, $pub_hex, $ctx);
 my $pub_pkey = gen_ec_pubkey($group_name, $pub_hex);
-my $pub_hex2= read_ec_pubkey($pub_pkey);
+my $pub_hex2= read_ec_pubkey($pub_pkey, 0);
 is($pub_hex, $pub_hex2, "gen_ec_pubkey $group_name");
 write_pubkey_to_pem("$FindBin::RealBin/ecc_nist_p256_pub.recover.pem", $pub_pkey);
 
@@ -41,12 +41,20 @@ my $priv_pkey = gen_ec_key($group_name, $priv_hex);
 my $priv_hex2= read_ec_key($priv_pkey);
 is($priv_hex2, $priv_hex, "read_ec_key $group_name");
 
+my $msg = 'justfortest';
+my $sig = ecdsa_sign($priv_pkey, 'sha256', $msg);
+#my $sig = pack("H*", '304402200cf90191351728234925fefe695a19ad111ab959a45eb9abd445972d6d5ecdff02204b1aa9cc62a9e6b894b1539918af61fca0d85554d1811e8eb00aa75ede783c5f');
+#print unpack("H*", $sig), "\n";
+my $sig_ret = ecdsa_verify($pub_pkey, 'sha256', $msg, $sig);
+is($sig_ret, 1, "ecdsa sign & ecdsa verify");
+#print "sig_ret: $sig_ret\n";
+
 
 $group_name = 'X25519';
-$pub_hex = read_ec_pubkey_from_pem("$FindBin::RealBin/x25519_a_pub.pem");
+$pub_hex = read_ec_pubkey_from_pem("$FindBin::RealBin/x25519_a_pub.pem", 1);
 is($pub_hex, '6752249C66966D26DDBF1A75D6ABBACDD04B9D65FFE5171FCDE492A25FFF763E', "read_ec_pubkey_from_pem $group_name");
 $pub_pkey = gen_ec_pubkey($group_name, $pub_hex);
-$pub_hex2= read_ec_pubkey($pub_pkey);
+$pub_hex2= read_ec_pubkey($pub_pkey, 1);
 is($pub_hex, $pub_hex2, "gen_ec_pubkey $group_name");
 #$pub_hex = 
 
