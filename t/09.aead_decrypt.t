@@ -31,9 +31,9 @@ is($plaintext_d, $plaintext, "$cipher_name plaintext");
 my $ctr_cipher_name = 'aes-256-ctr';
 my $iv_ctr = pack("H*", '12f7ea1db314e41aa7c0c6558cc680ad');
 my $ciphertext_ctr = pack("H*", "233fd586345a37623c00fc48780ebf7a25914fa26d73541beb765144f67aa0e961a54ec96e3348f1abd7222f13c7b088ba9839c78ae9beb3352bbde9d291c48dca45481d196e44a3fa");
-my $ciphertext_ctr_e = aes_ctr_encrypt($ctr_cipher_name, $plaintext, $key, $iv_ctr);
+my $ciphertext_ctr_e = symmetric_encrypt($ctr_cipher_name, $plaintext, $key, $iv_ctr);
 is($ciphertext_ctr_e, $ciphertext_ctr, "$ctr_cipher_name encrypt");
-my $plaintext_ctr_d = aes_ctr_decrypt($ctr_cipher_name, $ciphertext_ctr_e, $key, $iv_ctr);
+my $plaintext_ctr_d = symmetric_decrypt($ctr_cipher_name, $ciphertext_ctr_e, $key, $iv_ctr);
 is($plaintext_ctr_d, $plaintext, "$ctr_cipher_name decrypt");
 
 done_testing;

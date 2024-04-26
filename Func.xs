@@ -22,6 +22,76 @@
 #include <stdlib.h>
 #include <string.h>
 
+bool is_empty(unsigned char* s){
+    if(strlen(s)==0)
+        return true;
+
+    return false;
+}
+
+EC_POINT* hex2point(unsigned char* group_name, unsigned char* point_hex)
+  {
+    int nid = OBJ_txt2nid(group_name);
+    EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+
+    BN_CTX *ctx = BN_CTX_new();
+
+    EC_POINT* ec_point = EC_POINT_new(group);
+    ec_point = EC_POINT_hex2point(group, point_hex, ec_point, ctx);
+
+    BN_CTX_free(ctx);
+
+    return  ec_point;
+  }
+
+void hexdump(unsigned char *info, unsigned char *buf, const int num)
+{
+    int i;
+    printf("\n%s, %d\n", info, num);
+
+    for(i = 0; i < num; i++)
+    {
+        printf("%02x", buf[i]);
+    }
+    printf("\n");
+
+    for(i = 0; i < num; i++)
+    {
+        printf("%02x ", buf[i]);
+        if ((i+1)%8 == 0)
+            printf("\n");
+    }
+    printf("\n");
+    return;
+}
+
+
+size_t slurp(unsigned char* fname, unsigned char **buf){
+    /* declare a file pointer */
+    FILE    *infile;
+    size_t    buf_len;
+
+    infile = fopen(fname, "r");
+
+    if(infile == NULL)
+        return 0;
+
+    fseek(infile, 0L, SEEK_END);
+    buf_len = ftell(infile);
+
+    fseek(infile, 0L, SEEK_SET);	
+
+    *buf = (unsigned char*)calloc(buf_len, sizeof(unsigned char));	
+
+    if(*buf == NULL)
+        return 1;
+
+    int ret = fread(*buf, sizeof(unsigned char), buf_len, infile);
+    fclose(infile);
+
+    return buf_len;
+}
+
 BIGNUM* hex2bn(unsigned char* a)
 {
     BIGNUM* bn_a = BN_new();
@@ -29,69 +99,57 @@ BIGNUM* hex2bn(unsigned char* a)
     return bn_a;
 }
 
-unsigned char * bin2hex(const unsigned char * bin, size_t bin_len)
+unsigned char * bin2hex(unsigned char * bin, size_t bin_len)
 {
 
-	unsigned char   *out = NULL;
-	size_t  out_len;
+    unsigned char   *out = NULL;
+    size_t  out_len;
     size_t n = bin_len*2 + 1;
-    
+
     out = OPENSSL_malloc(n);
-    OPENSSL_buf2hexstr_ex(out, n, &out_len, bin, bin_len, '\0');
+    OPENSSL_buf2hexstr_ex(out, n, &out_len, (const unsigned char *) bin, bin_len, '\0');
 
     return out;
-
-    /*if (bin == NULL || bin_len == 0)*/
-        /*return NULL;*/
-
-    /*out = malloc(n);*/
-    /*int i;*/
-    /*for (i=0; i<bin_len; i++) {*/
-        /*out[i*2]   = "0123456789ABCDEF"[bin[i] >> 4];*/
-        /*out[i*2+1] = "0123456789ABCDEF"[bin[i] & 0x0F];*/
-    /*}*/
-    /*out[bin_len*2] = '\0';*/
-
-    /*return out;*/
 }
 
 BIGNUM* get_pkey_bn_param(EVP_PKEY *pkey, unsigned char *param_name)
 {
     BIGNUM *x_bn = NULL;
 
-    x_bn = BN_new();
-    EVP_PKEY_get_bn_param(pkey, param_name, &x_bn);
+    int ret = EVP_PKEY_get_bn_param(pkey, param_name, &x_bn);
 
     return x_bn;
 }
 
-unsigned char* get_pkey_octet_string_param(EVP_PKEY *pkey, unsigned char *param_name)
+size_t get_pkey_octet_string_param_raw(EVP_PKEY *pkey, unsigned char *param_name, unsigned char **s)
 {
-    unsigned char *s, *s_hex;
     size_t s_len;
-    
-    EVP_PKEY_get_octet_string_param(pkey, param_name, NULL,  0, &s_len);
-    s = OPENSSL_malloc(s_len);
-    EVP_PKEY_get_octet_string_param(pkey, param_name, s, s_len, NULL);
 
-    s_hex = bin2hex(s, s_len);
-    
-    return s_hex;
+    EVP_PKEY_get_octet_string_param(pkey, param_name, NULL,  0, &s_len);
+    *s = OPENSSL_malloc(s_len);
+    EVP_PKEY_get_octet_string_param(pkey, param_name, *s, s_len, NULL);
+
+    return s_len;
 }
 
 unsigned char* get_pkey_utf8_string_param(EVP_PKEY *pkey, unsigned char *param_name)
 {
-    unsigned char *s;
+    unsigned char *s=NULL;
     size_t s_len;
 
     EVP_PKEY_get_utf8_string_param(pkey, param_name, NULL,  0, &s_len);
     s = OPENSSL_malloc(s_len);
-    EVP_PKEY_get_utf8_string_param(pkey, param_name, s, s_len, NULL);
+    int ret = EVP_PKEY_get_utf8_string_param(pkey, param_name, s, s_len, NULL);
+
+    if(ret){
+        OPENSSL_free(s);
+        return NULL;
+    }
 
     return s;
 }
 
-EVP_PKEY *export_rsa_public_pkey(EVP_PKEY *rsa_priv)
+EVP_PKEY *export_rsa_pubkey(EVP_PKEY *rsa_priv)
 {
 
     OSSL_LIB_CTX *libctx = NULL;
@@ -189,9 +247,9 @@ size_t rsa_oaep_decrypt_raw(unsigned char *digest_name, EVP_PKEY *priv, unsigned
     return out_len;
 }
 
-unsigned char* read_ec_key(EVP_PKEY *pkey)
+unsigned char* read_key(EVP_PKEY *pkey)
 {
-    BIGNUM *priv_bn = NULL;
+  BIGNUM *priv_bn = NULL;
     char* priv_hex = NULL;
     char* priv = NULL;
     size_t priv_len=0;
@@ -213,303 +271,114 @@ unsigned char* read_ec_key(EVP_PKEY *pkey)
     OPENSSL_free(priv_bn);
 
     return priv_hex;
+
 }
 
-
-
-unsigned char* read_ec_key_from_pem(unsigned char* keyfile) 
+EVP_PKEY* read_key_from_der(unsigned char* keyfile) 
 {
 
-    FILE *inf = NULL; 
     EVP_PKEY *pkey = NULL;
-    unsigned char* priv_hex = NULL;
 
+    /*BIO *inf=NULL;*/
+    /*inf = BIO_new_file(keyfile, "r");*/
+    /*pkey = d2i_PrivateKey_bio(inf, &pkey);*/
+    /*BIO_set_close(inf, BIO_CLOSE);*/
+
+    FILE *inf = NULL;
     inf = fopen(keyfile, "r");
-    pkey = PEM_read_PrivateKey(inf, NULL, NULL, NULL);
+    pkey = d2i_PrivateKey_fp(inf, &pkey);
+    fclose(inf);
 
-    priv_hex = read_ec_key(pkey);
 
-    OPENSSL_free(pkey);
-
-    return priv_hex;
+    return pkey;
 
 }
 
-unsigned char* export_pubkey(EVP_PKEY *priv_pkey)
+EVP_PKEY* read_pubkey_from_der(unsigned char* keyfile) 
 {
-    unsigned char *pubkey = NULL;
-    size_t pubkey_len;
-    unsigned char *pub_hex = NULL;
 
-    /*pubkey_len = EVP_PKEY_get1_encoded_public_key(priv_pkey, &pubkey);*/
+    EVP_PKEY *pkey = NULL;
 
-    EVP_PKEY_get_octet_string_param(priv_pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
-    pubkey=OPENSSL_malloc(pubkey_len);
-    if (!EVP_PKEY_get_octet_string_param(priv_pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, &pubkey_len)){
-        OPENSSL_free(pubkey);
+    unsigned char *buf = NULL;
+    size_t buf_len = slurp(keyfile, &buf);
 
-        unsigned char *group_name = get_pkey_utf8_string_param(priv_pkey, OSSL_PKEY_PARAM_GROUP_NAME);
-        int nid = OBJ_sn2nid(group_name);
-        EC_GROUP* group = EC_GROUP_new_by_curve_name(nid);
+    d2i_PUBKEY(&pkey, (const unsigned char **) &buf, buf_len);
 
-        BIGNUM* priv_bn= get_pkey_bn_param(priv_pkey, OSSL_PKEY_PARAM_PRIV_KEY);
-
-        EC_POINT* ec_pub_point = EC_POINT_new(group);
-        EC_POINT_mul(group, ec_pub_point, priv_bn, NULL, NULL, NULL);
-
-        pubkey_len =  EC_POINT_point2oct(group, ec_pub_point, POINT_CONVERSION_COMPRESSED, NULL, 0, NULL);
-        pubkey=OPENSSL_malloc(pubkey_len);
-        EC_POINT_point2oct(group, ec_pub_point, POINT_CONVERSION_COMPRESSED, pubkey, pubkey_len, NULL);
-
-        EVP_PKEY_set_octet_string_param(priv_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pubkey, pubkey_len);
-
-        EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_from_pkey(NULL, priv_pkey, NULL);
-        if (!EVP_PKEY_public_check_quick(ctx))
-        {
-            EVP_PKEY_CTX_free(ctx);
-        }
-        EVP_PKEY_CTX_free(ctx);
-        EC_POINT_free(ec_pub_point);
-        EC_GROUP_free(group);
-        BN_free(priv_bn);
-    }
-
-    pub_hex = bin2hex(pubkey, pubkey_len);
-    if(pubkey) OPENSSL_free(pubkey);
-
-    return pub_hex;
+    return pkey;
 }
 
-/*std::vector<uint8_t> ECDSA::GetPubKeyFromPrivKey(EVP_PKEY* ec_key)*/
-/*{*/
-	/*size_t pub_key_size = 0;*/
-	/*EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, nullptr, 0, &pub_key_size);*/
-	/*std::vector<uint8_t> pub_key_buffer(pub_key_size);*/
-	/*if (!EVP_PKEY_get_octet_string_param(ec_key, OSSL_PKEY_PARAM_PUB_KEY, pub_key_buffer.data(), pub_key_buffer.size(),*/
-										 /*&pub_key_size))*/
-	/*{*/
-		/*size_t group_name_size = 0;*/
-		/*EVP_PKEY_get_utf8_string_param(ec_key, OSSL_PKEY_PARAM_GROUP_NAME, nullptr, 0, &group_name_size);*/
-		/*std::vector<char> group_name(group_name_size + 1);*/
-		/*if (!EVP_PKEY_get_utf8_string_param(ec_key, OSSL_PKEY_PARAM_GROUP_NAME, group_name.data(), group_name.size(),*/
-											/*&group_name_size))*/
-		/*{*/
-			/*return {};*/
-		/*}*/
+EVP_PKEY* read_key_from_pem(unsigned char* keyfile) 
+{
 
-		/*int group_nid = OBJ_sn2nid(group_name.data());*/
-		/*if (group_nid == NID_undef)*/
-		/*{*/
-			/*return {};*/
-		/*}*/
+    EVP_PKEY *pkey = NULL;
 
-		/*auto* ec_group = EC_GROUP_new_by_curve_name(group_nid);*/
-		/*if (ec_group == nullptr)*/
-		/*{*/
-			/*return {};*/
-		/*}*/
+    BIO *inf=NULL;
+    inf = BIO_new_file(keyfile, "r");
 
-		/*auto* pub_key = EC_POINT_new(ec_group);*/
-		/*if (pub_key == nullptr)*/
-		/*{*/
-			/*EC_GROUP_free(ec_group);*/
+    pkey = PEM_read_bio_PrivateKey(inf, NULL, NULL, NULL);
 
-			/*return {};*/
-		/*}*/
-		/*BIGNUM* priv_key = nullptr;*/
-		/*if (!EVP_PKEY_get_bn_param(ec_key, OSSL_PKEY_PARAM_PRIV_KEY, &priv_key))*/
-		/*{*/
-			/*EC_POINT_free(pub_key);*/
-			/*EC_GROUP_free(ec_group);*/
+    BIO_set_close(inf, BIO_CLOSE);
 
-			/*return {};*/
-		/*}*/
+    return pkey;
+}
 
-		/*if (!EC_POINT_mul(ec_group, pub_key, priv_key, nullptr, nullptr, nullptr))*/
-		/*{*/
-			/*EC_POINT_free(pub_key);*/
-			/*EC_GROUP_free(ec_group);*/
+EVP_PKEY* read_pubkey_from_pem(unsigned char *keyfile)
+{
+    FILE *inf = fopen(keyfile, "r");
 
-			/*return {};*/
-		/*}*/
+    EVP_PKEY *pkey = NULL;
 
-		/*pub_key_size = EC_POINT_point2oct(ec_group, pub_key, POINT_CONVERSION_COMPRESSED, nullptr, 0, nullptr);*/
-		/*if (pub_key_size == 0)*/
-		/*{*/
-			/*EC_POINT_free(pub_key);*/
-			/*EC_GROUP_free(ec_group);*/
+    pkey = PEM_read_PUBKEY(inf, NULL, NULL, NULL);
 
-			/*return {};*/
-		/*}*/
-		/*pub_key_buffer.resize(pub_key_size);*/
-		/*if (!EC_POINT_point2oct(ec_group, pub_key, POINT_CONVERSION_COMPRESSED, pub_key_buffer.data(),*/
-								/*pub_key_buffer.size(), nullptr))*/
-		/*{*/
-			/*EC_POINT_free(pub_key);*/
-			/*EC_GROUP_free(ec_group);*/
+    fclose(inf);
 
-			/*return {};*/
-		/*}*/
+    return pkey;
 
-		/*EC_POINT_free(pub_key);*/
-		/*EC_GROUP_free(ec_group);*/
+}
 
-		/*if (!EVP_PKEY_set_octet_string_param(ec_key, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub_key_buffer.data(),*/
-											 /*pub_key_buffer.size()))*/
-		/*{*/
-			/*return {};*/
-		/*}*/
+unsigned char* read_pubkey(EVP_PKEY *pkey)
+{
+    unsigned char *pub=NULL;
+    unsigned char *phex=NULL;
+    size_t pub_len;
+    EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL,  0, &pub_len);
+    /*EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL,  0, &pub_len);*/
+    pub = OPENSSL_malloc(pub_len);
+    EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL);
+    /*EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pub,  pub_len, &pub_len);*/
 
-		/*auto* pCtx = EVP_PKEY_CTX_new_from_pkey(nullptr, ec_key, nullptr);*/
-		/*if (pCtx == nullptr)*/
-		/*{*/
-			/*return {};*/
-		/*}*/
 
-		/*if (!EVP_PKEY_public_check_quick(pCtx))*/
-		/*{*/
-			/*EVP_PKEY_CTX_free(pCtx);*/
 
-			/*return {};*/
-		/*}*/
 
-		/*EVP_PKEY_CTX_free(pCtx);*/
-	/*}*/
-
-	/*return pub_key_buffer;*/
-/*}*/
-
+if(pub){
+   phex = bin2hex(pub, pub_len);    
+   OPENSSL_free(pub);
+}
+    return phex;
+}
 
 unsigned char* read_ec_pubkey(EVP_PKEY *pkey, int compressed_flag)
 {
-
-    unsigned char* pub=NULL;
-    size_t pub_len;
-    char* pub_hex = NULL;
-
+    unsigned char* phex = NULL;
     if(compressed_flag){
         EVP_PKEY_set_utf8_string_param(pkey, OSSL_PKEY_PARAM_EC_POINT_CONVERSION_FORMAT, OSSL_PKEY_EC_POINT_CONVERSION_FORMAT_COMPRESSED);
     }
 
-    /*EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL,  0, &pub_len);*/
-    EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL,  0, &pub_len);
-    pub = OPENSSL_malloc(pub_len);
-    /*EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL);*/
-    EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pub,  pub_len, &pub_len);
+    phex = read_pubkey(pkey);
+    return phex;
 
-    /*EVP_PKEY_get_raw_public_key(pkey, pub, &pub_len);*/
+    }
 
-    pub_hex = bin2hex(pub, pub_len);
-
-    OPENSSL_free(pub);
-    
-    return pub_hex;
-}
-
-EVP_PKEY* evp_pkey_from_point_hex(EC_GROUP* group, char* point_hex, BN_CTX* ctx)  
+BIGNUM* bn_mod_sqrt(BIGNUM *a, BIGNUM *p)
 {
-    EC_KEY* ec_key = EC_KEY_new();
-    EC_KEY_set_group(ec_key, group);
-
-    EC_POINT* ec_pub_point = EC_POINT_new(group);
-    ec_pub_point = EC_POINT_hex2point(group, point_hex, ec_pub_point, ctx);
-    EC_KEY_set_public_key(ec_key, ec_pub_point);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(pkey, ec_key);
-
-    return pkey;
-}
-
-EVP_PKEY* evp_pkey_from_priv_hex(EC_GROUP* group, char* priv_hex)  
-{
-    EC_KEY* ec_key = EC_KEY_new();
-    EC_KEY_set_group(ec_key, group);
-    EC_KEY_set_asn1_flag(ec_key, OPENSSL_EC_NAMED_CURVE);
-
-    BIGNUM *priv_bn = BN_new();
-    BN_hex2bn(&priv_bn, priv_hex);
-    EC_KEY_set_private_key(ec_key, (const BIGNUM *) priv_bn);
-
-    EC_POINT* ec_pub_point = EC_POINT_new(group);
-    EC_POINT_mul(group, ec_pub_point, priv_bn, NULL, NULL, NULL);
-    EC_KEY_set_public_key(ec_key, ec_pub_point);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(pkey, ec_key);
-
-    return pkey;
-
-}
-
-
-unsigned char* read_ec_pubkey_from_pem(char* keyfile, int compressed_flag) 
-{
-
-    FILE *inf; 
-    EVP_PKEY *pkey = NULL;
-    unsigned char * pub_hex =NULL;
-
-    inf = fopen(keyfile, "r");
-    pkey = PEM_read_PUBKEY(inf, NULL, NULL, NULL);
-
-    pub_hex = read_ec_pubkey(pkey, compressed_flag);
-
-    OPENSSL_free(pkey);
-
-    return pub_hex;
-}
-
-EVP_PKEY* read_priv_pkey_from_pem(unsigned char *keyfile)
-{
-    FILE *inf = fopen(keyfile, "r");
-
-    EVP_PKEY *pkey = NULL;
-
-    pkey = PEM_read_PrivateKey(inf, NULL, NULL, NULL);
-
-    return pkey;
-
-}
-
-EVP_PKEY* read_pub_pkey_from_pem(unsigned char *keyfile)
-{
-    FILE *inf = fopen(keyfile, "r");
-
-    EVP_PKEY *pkey = NULL;
-
-    pkey = PEM_read_PUBKEY(inf, NULL, NULL, NULL);
-
-    return pkey;
-
-}
-
-
-unsigned char* bn_mod_sqrt(unsigned char *a, unsigned char *p)
-{
-unsigned char *s=NULL;
 
     BN_CTX *ctx;
-    BIGNUM *bn_a, *bn_p, *bn_s, *ret;
 
     ctx = BN_CTX_new();
 
-    bn_a = BN_new();
-    BN_hex2bn(&bn_a, a); 
+    BIGNUM* s = BN_new();
+    BN_mod_sqrt(s, a, p, ctx);
 
-    bn_p = BN_new();
-    BN_hex2bn(&bn_p, p);
-
-    bn_s = BN_new();
-    ret = BN_mod_sqrt(bn_s, bn_a, bn_p, ctx);
-
-    if(ret != NULL){
-        s = BN_bn2hex(bn_s);
-    }
-
-    BN_free(bn_a);
-    BN_free(bn_p);
-    BN_free(bn_s);
     BN_CTX_free(ctx);
 
     return s;
@@ -517,7 +386,7 @@ unsigned char *s=NULL;
 
 unsigned char* aes_cmac_raw(unsigned char* cipher_name, unsigned char* key, size_t key_len, unsigned char* msg, size_t msg_len, size_t *out_len_ptr ) 
 {
-// https://github.com/openssl/openssl/blob/master/demos/mac/cmac-aes256.c
+    // https://github.com/openssl/openssl/blob/master/demos/mac/cmac-aes256.c
 
     unsigned char* out=NULL;
 
@@ -545,7 +414,7 @@ unsigned char* aes_cmac_raw(unsigned char* cipher_name, unsigned char* key, size
     EVP_MAC_CTX_free(mctx);
     EVP_MAC_free(mac);
     OSSL_LIB_CTX_free(library_context);
-    
+
     return out;
 }
 
@@ -611,14 +480,6 @@ int hmac_raw(char *digest_name, unsigned char* key, size_t key_len, unsigned cha
     EVP_MAC_free(mac);
     OSSL_LIB_CTX_free(library_context);
 
-    /*printf("%s\n", digest_name);*/
-    /*BIO_dump_indent_fp(stdout, key, key_len, 2);*/
-    /*printf("\n");*/
-    /*BIO_dump_indent_fp(stdout, data, data_len, 2);*/
-    /*printf("\n");*/
-    /*BIO_dump_indent_fp(stdout, *out, out_len, 2);*/
-    /*printf("\n");*/
-
     return out_len;
 }
 
@@ -655,21 +516,6 @@ int hkdf_raw(int mode, unsigned char *digest_name, unsigned char *ikm, size_t ik
     return okm_len;
 }
 
-
-unsigned char* digest_raw(unsigned char* digest_name, unsigned char* msg, size_t msg_len, size_t *out_len_ptr)
-{
-    unsigned char *out = NULL;
-    const EVP_MD *digest;
-
-    digest = EVP_get_digestbyname(digest_name);
-    *out_len_ptr = EVP_MD_get_size(digest);
-
-    out = OPENSSL_malloc(*out_len_ptr); 
-    EVP_Digest(msg, msg_len, out, (unsigned int *) out_len_ptr, digest, NULL);
-
-    return out;
-}
-
 unsigned char* ecdh_raw(EVP_PKEY *priv, EVP_PKEY *peer_pub, size_t *z_len_ptr)
 {
     unsigned char* z=NULL;
@@ -689,22 +535,23 @@ unsigned char* ecdh_raw(EVP_PKEY *priv, EVP_PKEY *peer_pub, size_t *z_len_ptr)
     return z;
 }
 
-unsigned char* ecdh_pem_raw(unsigned char* local_priv_pem, unsigned char* peer_pub_pem, size_t *z_len_ptr)
-{
+size_t  calc_ec_pub_from_priv(unsigned char* group_name, BIGNUM* priv_bn, unsigned char** pubkey){
+    size_t pubkey_len;
+    int nid = OBJ_txt2nid(group_name);
+    EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
 
-    EVP_PKEY *pkey = NULL;
-    FILE *keyfile = fopen(local_priv_pem, "r");
-    pkey = PEM_read_PrivateKey(keyfile, NULL, NULL, NULL);
+    EC_POINT* ec_pub_point = EC_POINT_new(group);
+    EC_POINT_mul(group, ec_pub_point, priv_bn, NULL, NULL, NULL);
 
-    EVP_PKEY *peer_pubkey = NULL;
-    FILE *peer_pubkeyfile = fopen(peer_pub_pem, "r");
-    peer_pubkey = PEM_read_PUBKEY(peer_pubkeyfile, NULL, NULL, NULL);
+    pubkey_len =  EC_POINT_point2oct(group, ec_pub_point, POINT_CONVERSION_COMPRESSED, NULL, 0, NULL);
+    *pubkey=OPENSSL_malloc(pubkey_len);
+    EC_POINT_point2oct(group, ec_pub_point, POINT_CONVERSION_COMPRESSED, *pubkey, pubkey_len, NULL);
 
-    unsigned char *z;
-    z = ecdh_raw(pkey, peer_pubkey, z_len_ptr);
-
-    return z;
+    EC_POINT_free(ec_pub_point);
+    EC_GROUP_free(group);
+    return pubkey_len; 
 }
+
 
 EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
 {
@@ -712,7 +559,7 @@ EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
     int nid;
     EVP_PKEY_CTX *ctx=NULL;
     EVP_PKEY *pkey = NULL;
-    OSSL_PARAM params[3];
+    OSSL_PARAM params[4];
     OSSL_PARAM *p = params;
 
     unsigned char* priv=NULL;
@@ -742,7 +589,13 @@ EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
         BN_hex2bn(&priv_bn, priv_hex);
         BN_bn2nativepad(priv_bn, priv, priv_len);
         *p++ = OSSL_PARAM_construct_BN(OSSL_PKEY_PARAM_PRIV_KEY, priv, priv_len);
-        OPENSSL_free(priv_bn);
+
+        size_t pubkey_len;
+        unsigned char* pubkey;
+        pubkey_len = calc_ec_pub_from_priv(group_name, priv_bn, &pubkey);
+        *p++ = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len);
+
+        BN_free(priv_bn);
     }
 
     *p = OSSL_PARAM_construct_end();
@@ -764,6 +617,7 @@ EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
 
 }
 
+
 EVP_PKEY * gen_ec_pubkey(unsigned char *group_name, unsigned char* point_hex)
 {
     unsigned char *point; 
@@ -774,29 +628,75 @@ EVP_PKEY * gen_ec_pubkey(unsigned char *group_name, unsigned char* point_hex)
 
     point = OPENSSL_hexstr2buf(point_hex, &point_len);
 
-    nid = OBJ_sn2nid(group_name);
+    nid = OBJ_txt2nid(group_name);
 
-        pctx = EVP_PKEY_CTX_new_id(nid, NULL);
-        if(pctx){
-            pkey = EVP_PKEY_new_raw_public_key(nid, NULL, point, point_len);
-            return pkey;
-        }
+    pctx = EVP_PKEY_CTX_new_id(nid, NULL);
+    if(!pctx){
+        pctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+    }
+        /*pkey = EVP_PKEY_new_raw_public_key(nid, NULL, point, point_len);*/
+    /*EVP_PKEY *pkey = EVP_PKEY_new();*/
 
-    pctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
-    EVP_PKEY_fromdata_init(pctx);
+        EVP_PKEY_fromdata_init(pctx);
 
-    OSSL_PARAM params[3];
-    params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME, (char *) group_name, 0);
-    params[1] = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY, point, point_len);
-    params[2] = OSSL_PARAM_construct_end();
+        OSSL_PARAM params[3];
+        params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME, (char *) group_name, 0);
+        params[1] = OSSL_PARAM_construct_octet_string(OSSL_PKEY_PARAM_PUB_KEY, point, point_len);
+        params[2] = OSSL_PARAM_construct_end();
 
-    EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PUBLIC_KEY, params);
+/*EVP_PKEY_CTX_set_params(pctx, params);*/
+        EVP_PKEY_fromdata(pctx, &pkey, EVP_PKEY_PUBLIC_KEY, params);
 
     EVP_PKEY_CTX_free(pctx);
-    OPENSSL_free(point);
+    /*OPENSSL_free(point);*/
 
     return pkey;
+}
 
+
+EVP_PKEY* export_ec_pubkey(EVP_PKEY *priv_pkey)
+{
+    size_t pubkey_len = 0;
+    unsigned char* pubkey = NULL;
+    unsigned char *pub_hex;
+    EVP_PKEY *pub_pkey = NULL;
+    int nid=0;
+    unsigned char *group_name = NULL;
+
+    group_name=get_pkey_utf8_string_param(priv_pkey, OSSL_PKEY_PARAM_GROUP_NAME);
+    nid = OBJ_txt2nid(group_name);
+    if(!nid){
+        nid = EVP_PKEY_get_base_id(priv_pkey);
+        group_name = (unsigned char*) OBJ_nid2sn(nid);
+    }
+
+    EVP_PKEY_get_octet_string_param(priv_pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
+    pubkey=OPENSSL_malloc(pubkey_len);
+    EVP_PKEY_get_octet_string_param(priv_pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, &pubkey_len);
+
+    if(pubkey_len<1){
+        BIGNUM* priv_bn= get_pkey_bn_param(priv_pkey, OSSL_PKEY_PARAM_PRIV_KEY);
+        pubkey_len = calc_ec_pub_from_priv(group_name, priv_bn, &pubkey);
+        BN_free(priv_bn);
+    }
+
+    pub_hex = bin2hex(pubkey, pubkey_len);
+    pub_pkey = gen_ec_pubkey(group_name, pub_hex);
+    OPENSSL_free(pub_hex);
+
+    return pub_pkey;
+}
+
+unsigned char* write_key_to_der(unsigned char* dst_fname, EVP_PKEY *pkey)
+{
+    BIO *out;
+    out = BIO_new_file(dst_fname, "w+");
+
+    i2d_PrivateKey_bio(out, pkey);
+
+    BIO_flush(out);
+
+    return dst_fname;
 }
 
 unsigned char* write_key_to_pem(unsigned char* dst_fname, EVP_PKEY *pkey)
@@ -805,6 +705,18 @@ unsigned char* write_key_to_pem(unsigned char* dst_fname, EVP_PKEY *pkey)
     out = BIO_new_file(dst_fname, "w+");
 
     PEM_write_bio_PrivateKey(out, pkey, NULL, NULL, 0, NULL, NULL);
+
+    BIO_flush(out);
+
+    return dst_fname;
+}
+
+unsigned char* write_pubkey_to_der(unsigned char* dst_fname, EVP_PKEY *pkey)
+{
+    BIO *out;
+    out = BIO_new_file(dst_fname, "w+");
+
+    i2d_PUBKEY_bio(out, pkey);
 
     BIO_flush(out);
 
@@ -880,7 +792,7 @@ int ecdsa_verify_raw(EVP_PKEY *pub_key, const char *sig_name, char *msg, int msg
     return ret;
 }
 
-int aes_ctr_raw(unsigned char *cipher_name, unsigned char *in, int in_len, unsigned char *key, unsigned char *iv, int iv_len, unsigned char **out, int is_encrypt )
+int symmetric_cipher_raw(unsigned char *cipher_name, unsigned char *in, int in_len, unsigned char *key, unsigned char *iv, int iv_len, unsigned char **out, int is_encrypt )
 {
     EVP_CIPHER_CTX *ctx;
 
@@ -990,7 +902,7 @@ int aead_decrypt_raw( unsigned char *cipher_name, unsigned char *ciphertext, int
         if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_IVLEN, iv_len, NULL))
             return -1;
     }
-    
+
     if(!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv))
         return -1;
 
@@ -1036,80 +948,63 @@ void print_pkey_gettable_params(EVP_PKEY *pkey)
     return;
 }
 
-
-
-EC_POINT* hex2point(EC_GROUP *group, unsigned char* point_hex)
-  {
-    BN_CTX *ctx = BN_CTX_new();
-
-    EC_POINT* ec_point = EC_POINT_new(group);
-    ec_point = EC_POINT_hex2point(group, point_hex, ec_point, ctx);
-
-    BN_CTX_free(ctx);
-
-    return  ec_point;
-  }
-
-
 MODULE = Crypt::OpenSSL::Base::Func		PACKAGE = Crypt::OpenSSL::Base::Func		
+
+const char *OBJ_nid2sn(int n);
+
+EC_POINT* hex2point(unsigned char* group_name, unsigned char* point_hex)
 
 char *BN_bn2hex(const BIGNUM *a);
 
 BIGNUM* hex2bn(unsigned char* a)
 
-EVP_PKEY* evp_pkey_from_priv_hex(EC_GROUP* group, char* priv_hex)  
-
-EVP_PKEY* evp_pkey_from_point_hex(EC_GROUP* group, char* point_hex, BN_CTX* ctx)  
-
-unsigned char* export_pubkey(EVP_PKEY *priv_pkey)
-
-EC_POINT* hex2point(EC_GROUP *group, unsigned char* point_hex)
-
 EVP_PKEY * gen_ec_key(unsigned char *group_name, unsigned char* priv_hex)
 
 EVP_PKEY * gen_ec_pubkey(unsigned char* group_name, unsigned char* point_hex)
 
-EVP_PKEY* read_priv_pkey_from_pem(unsigned char *keyfile)
+char * bin2hex(unsigned char * bin, size_t len)
 
-EVP_PKEY* read_pub_pkey_from_pem(unsigned char *keyfile)
+BIGNUM* bn_mod_sqrt(BIGNUM *a, BIGNUM *p)
 
-char * bin2hex(const unsigned char * bin, size_t len)
-
-unsigned char* bn_mod_sqrt(unsigned char *a, unsigned char *p)
-
-unsigned char* read_ec_key(EVP_PKEY *priv_pkey)
-
-unsigned char* read_ec_key_from_pem(unsigned char* keyfile) 
+unsigned char* read_key(EVP_PKEY *pkey)
 
 unsigned char* read_ec_pubkey(EVP_PKEY *pkey, int compressed_flag)
 
-unsigned char* read_ec_pubkey_from_pem(char* keyfile, int compressed_flag) 
+unsigned char* read_pubkey(EVP_PKEY *pkey)
+
+EVP_PKEY* read_key_from_pem(unsigned char* keyfile) 
+
+EVP_PKEY* read_key_from_der(unsigned char* keyfile) 
+
+EVP_PKEY* read_pubkey_from_der(unsigned char* keyfile) 
+
+EVP_PKEY* read_pubkey_from_pem(unsigned char *keyfile)
 
 unsigned char* write_key_to_pem(unsigned char* dst_fname, EVP_PKEY *pkey)
 
 unsigned char* write_pubkey_to_pem(unsigned char* dst_fname, EVP_PKEY *pkey)
 
-EVP_PKEY *export_rsa_public_pkey(EVP_PKEY *rsa_priv)
+unsigned char* write_key_to_der(unsigned char* dst_fname, EVP_PKEY *pkey)
+
+unsigned char* write_pubkey_to_der(unsigned char* dst_fname, EVP_PKEY *pkey)
+
+EVP_PKEY *export_rsa_pubkey(EVP_PKEY *rsa_priv)
+
+EVP_PKEY* export_ec_pubkey(EVP_PKEY *priv_pkey)
 
 size_t rsa_oaep_encrypt_raw(unsigned char *digest_name, EVP_PKEY *pub, unsigned char* in, size_t in_len, unsigned char ** out)
 
 size_t rsa_oaep_decrypt_raw(unsigned char *digest_name, EVP_PKEY *priv, unsigned char* in, size_t in_len, unsigned char ** out)
 
-
 BIGNUM* get_pkey_bn_param(EVP_PKEY *pkey, unsigned char *param_name)
 
-unsigned char* get_pkey_octet_string_param(EVP_PKEY *pkey, unsigned char *param_name)
+size_t get_pkey_octet_string_param_raw(EVP_PKEY *pkey, unsigned char *param_name, unsigned char **s)
 
 unsigned char* get_pkey_utf8_string_param(EVP_PKEY *pkey, unsigned char *param_name)
 
 void print_pkey_gettable_params(EVP_PKEY *pkey)
 
-
-
-
 int OBJ_sn2nid (const char *s)
-
-EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey)
 
 const EVP_MD *EVP_get_digestbyname(const char *name)
 
@@ -1232,51 +1127,51 @@ SV* pkcs5_pbkdf2_hmac(SV* password_sv, SV* salt_sv, unsigned int iteration, unsi
     OUTPUT:
         RETVAL
 
-SV* digest(unsigned char *digest_name, SV* msg_SV)
-  CODE:
-  {
-    unsigned char *msg= NULL;
-    size_t msg_len;
-    unsigned char* out = NULL;
-    size_t out_len;
+SV* digest_array(unsigned char *digest_name, AV* arr)
+    CODE:
+    {
+    const EVP_MD *digest;
+    digest = EVP_get_digestbyname(digest_name);
 
-    msg = (unsigned char*) SvPV( msg_SV, msg_len );
+    EVP_MD_CTX *mdctx= EVP_MD_CTX_new();
+    EVP_DigestInit_ex2(mdctx, digest, NULL);
 
-    out = digest_raw(digest_name, msg, msg_len, &out_len);
+    size_t arr_len = av_len(arr);
+    for(int i=0;i<=arr_len; i++)
+    {
+        SV** msg_SV = av_fetch(arr, i, 0);
+        size_t msg_len;
+        unsigned char* msg = (unsigned char*) SvPV( *msg_SV, msg_len );
+        EVP_DigestUpdate(mdctx, msg, msg_len);
+    }
+
+    unsigned int out_len = EVP_MD_get_size(digest);
+    unsigned char* out = OPENSSL_malloc(out_len); 
+    EVP_DigestFinal_ex(mdctx, out, &out_len);
+
+    EVP_MD_CTX_free(mdctx);
 
     RETVAL = newSVpv(out, out_len);
-  }
-  OUTPUT:
-    RETVAL
+    }
+    OUTPUT:
+        RETVAL
+
 
 SV* ecdh(EVP_PKEY *priv, EVP_PKEY *peer_pub)
-  CODE:
-  {
+    CODE:
+    {
     unsigned char* out = NULL;
     size_t out_len;
 
     out = ecdh_raw(priv, peer_pub, &out_len);
 
     RETVAL = newSVpv(out, out_len);
-  }
-  OUTPUT:
-    RETVAL
-
-SV* ecdh_pem(unsigned char* local_priv_pem, unsigned char* peer_pub_pem)
-  CODE:
-  {
-    unsigned char* out = NULL;
-    size_t out_len;
-
-    out = ecdh_pem_raw(local_priv_pem, peer_pub_pem, &out_len);
-
-    RETVAL = newSVpv(out, out_len);
-  }
-  OUTPUT:
-    RETVAL
+    }
+    OUTPUT:
+        RETVAL
 
 SV* ecdsa_sign(EVP_PKEY *priv_key, const char* sig_name, SV* msg_SV)
-  CODE:
+    CODE:
     {
     unsigned char *msg;
     size_t msg_len;
@@ -1294,11 +1189,11 @@ SV* ecdsa_sign(EVP_PKEY *priv_key, const char* sig_name, SV* msg_SV)
     RETVAL = sig_SV;
 
     }
-      OUTPUT:
+    OUTPUT:
         RETVAL
 
 int ecdsa_verify(EVP_PKEY *pub_key, unsigned char* sig_name, SV* msg_SV, SV* sig_SV)
-  CODE:
+    CODE:
     {
     unsigned char *msg;
     size_t msg_len;
@@ -1315,11 +1210,11 @@ int ecdsa_verify(EVP_PKEY *pub_key, unsigned char* sig_name, SV* msg_SV, SV* sig
     RETVAL = ret;
 
     }
-      OUTPUT:
+    OUTPUT:
         RETVAL
 
-SV* aes_ctr_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* key_SV, SV* iv_SV)
-  CODE:
+SV* symmetric_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* key_SV, SV* iv_SV)
+    CODE:
     {
     unsigned char *plaintext;
     size_t plaintext_len;
@@ -1337,7 +1232,7 @@ SV* aes_ctr_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* key_SV, SV
     iv = (unsigned char*) SvPV( iv_SV, iv_len );
 
     int is_encrypt = 1;
-    ciphertext_len = aes_ctr_raw(cipher_name, plaintext, plaintext_len, key, iv, iv_len, &ciphertext, is_encrypt);
+    ciphertext_len = symmetric_cipher_raw(cipher_name, plaintext, plaintext_len, key, iv, iv_len, &ciphertext, is_encrypt);
 
     ciphertext_SV = newSVpv(ciphertext, ciphertext_len);
 
@@ -1345,11 +1240,11 @@ SV* aes_ctr_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* key_SV, SV
     RETVAL = ciphertext_SV;
 
     }
-      OUTPUT:
+    OUTPUT:
         RETVAL
 
-SV* aes_ctr_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* key_SV, SV* iv_SV)
-  CODE:
+SV* symmetric_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* key_SV, SV* iv_SV)
+    CODE:
     {
     unsigned char *ciphertext;
     size_t ciphertext_len;
@@ -1367,7 +1262,7 @@ SV* aes_ctr_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* key_SV, S
     iv = (unsigned char*) SvPV( iv_SV, iv_len );
 
     int is_encrypt = 0;
-    plaintext_len = aes_ctr_raw(cipher_name, ciphertext, ciphertext_len, key, iv, iv_len, &plaintext, is_encrypt);
+    plaintext_len = symmetric_cipher_raw(cipher_name, ciphertext, ciphertext_len, key, iv, iv_len, &plaintext, is_encrypt);
 
     plaintext_SV = newSVpv(plaintext, plaintext_len);
 
@@ -1375,11 +1270,11 @@ SV* aes_ctr_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* key_SV, S
     RETVAL = plaintext_SV;
 
     }
-      OUTPUT:
+    OUTPUT:
         RETVAL
 
 SV* aead_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* aad_SV, SV* key_SV, SV* iv_SV, int tag_len)
-  CODE:
+    CODE:
     {
     unsigned char *plaintext;
     size_t plaintext_len;
@@ -1423,12 +1318,12 @@ SV* aead_encrypt(unsigned char* cipher_name, SV* plaintext_SV, SV* aad_SV, SV* k
     /*RETVAL = newRV_inc ((SV *) hv);*/
 
     }
-      OUTPUT:
+    OUTPUT:
         RETVAL
 
 SV* aead_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* aad_SV, SV* tag_SV, SV* key_SV, SV* iv_SV)
-  CODE:
-{
+    CODE:
+    {
     SV *res;
     unsigned char *plaintext;
     size_t plaintext_len;
@@ -1454,8 +1349,67 @@ SV* aead_decrypt(unsigned char* cipher_name, SV* ciphertext_SV, SV* aad_SV, SV* 
     res = newSVpv(plaintext, plaintext_len);
 
     RETVAL = res;
-}
-  OUTPUT:
-    RETVAL
+    }
+    OUTPUT:
+        RETVAL
+
+
+SV* get_pkey_octet_string_param(EVP_PKEY *pkey, unsigned char* param_name)
+    CODE:
+    {
+    unsigned char *s;
+    size_t s_len;
+    SV* s_SV ;
+
+    s_len = get_pkey_octet_string_param_raw(pkey, param_name, &s);
+
+    s_SV = newSVpv(s, s_len);
+
+    RETVAL = s_SV;
+
+    }
+    OUTPUT:
+        RETVAL
+
+SV* rsa_oaep_encrypt(unsigned char* digest_name, EVP_PKEY *pub, SV* plaintext_SV)
+    CODE:
+    {
+    unsigned char *plaintext;
+    size_t plaintext_len;
+    unsigned char *ciphertext;
+    size_t ciphertext_len;
+    SV* ciphertext_SV ;
+
+    plaintext = (unsigned char*) SvPV( plaintext_SV, plaintext_len );
+
+    ciphertext_len = rsa_oaep_encrypt_raw(digest_name, pub, plaintext, plaintext_len, &ciphertext);
+
+    ciphertext_SV = newSVpv(ciphertext, ciphertext_len);
+
+    RETVAL = ciphertext_SV;
+
+    }
+    OUTPUT:
+        RETVAL
+
+SV* rsa_oaep_decrypt(unsigned char* digest_name, EVP_PKEY *priv, SV* ciphertext_SV)
+    CODE:
+    {
+    SV *res;
+    unsigned char *plaintext;
+    size_t plaintext_len;
+    unsigned char *ciphertext;
+    size_t ciphertext_len;
+
+    ciphertext = (unsigned char*) SvPV( ciphertext_SV, ciphertext_len );
+
+    plaintext_len = rsa_oaep_decrypt_raw(digest_name, priv, ciphertext, ciphertext_len, &plaintext);
+
+    res = newSVpv(plaintext, plaintext_len);
+
+    RETVAL = res;
+    }
+    OUTPUT:
+        RETVAL
 
 

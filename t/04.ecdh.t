@@ -5,10 +5,14 @@ use Test::More;
 use Crypt::OpenSSL::Base::Func ;
 use FindBin;
 
-my $z = ecdh_pem("$FindBin::Bin/x25519_a_priv.pem", "$FindBin::Bin/x25519_b_pub.pem");
-is($z, pack("H*", '0D661C303EA035BE2936174FEC0954213D0D7C760F67B9B661414064304A8347'), 'ecdh_pem');
+my $a_priv = read_key_from_pem("$FindBin::Bin/x25519_a_priv.pem");
+my $b_pub =  read_key_from_pem("$FindBin::Bin/x25519_b_pub.pem");
+my $z = ecdh($a_priv, $b_pub);
 
-my $z2 = ecdh_pem("$FindBin::Bin/x25519_b_priv.pem", "$FindBin::Bin/x25519_a_pub.pem");
-is($z, $z2, 'ecdh_pem');
+my $b_priv = read_key_from_pem("$FindBin::Bin/x25519_b_priv.pem");
+my $a_pub =  read_key_from_pem("$FindBin::Bin/x25519_a_pub.pem");
+my $z2 = ecdh($b_priv, $a_pub);
+
+is($z, $z2, 'ecdh');
 
 done_testing();

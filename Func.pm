@@ -12,77 +12,90 @@ use Crypt::OpenSSL::Bignum;
 use POSIX;
 #use Smart::Comments;
 
-our $VERSION = '0.037';
+our $VERSION = '0.038';
 
 our @ISA = qw(Exporter);
 
-our @EXPORT = qw( 
+our @OSSLF= qw(
 BN_bn2hex
-hex2bn
-export_pubkey
+EC_GROUP_get_curve
+EC_POINT_get_affine_coordinates
+EC_POINT_set_affine_coordinates
+EVP_MD_get_block_size
+EVP_MD_get_size
+EVP_PKEY_get1_EC_KEY
+EVP_get_digestbyname
+OBJ_sn2nid
+OBJ_nid2sn
+);
+
+our @XSF = qw(
 hex2point
-bn_mod_sqrt 
-aes_cmac 
-hmac
-hkdf
-hkdf_extract
-hkdf_expand
-pkcs12_key_gen 
-pkcs5_pbkdf2_hmac
-digest
-ecdh 
-ecdh_pem
-gen_ec_key
-gen_ec_pubkey
-write_key_to_pem
-write_pubkey_to_pem
-read_ec_key
-read_ec_key_from_pem
-read_ec_pubkey
-read_ec_pubkey_from_pem
-read_priv_pkey_from_pem
-read_pub_pkey_from_pem
-aead_encrypt
 aead_decrypt
-aes_ctr_encrypt
-aes_ctr_decrypt
+aead_encrypt
+aes_cmac 
+bn_mod_sqrt 
+ecdh 
 ecdsa_sign
 ecdsa_verify
-export_rsa_public_pkey
-rsa_oaep_encrypt_raw
-rsa_oaep_decrypt_raw
-
-print_pkey_gettable_params
+export_ec_pubkey
+export_rsa_pubkey
+gen_ec_key
+gen_ec_pubkey
+get_ec_params
 get_pkey_bn_param
 get_pkey_octet_string_param
 get_pkey_utf8_string_param
+hex2bn
+hexdump
+slurp
+bin2hex
+pkcs12_key_gen 
+pkcs5_pbkdf2_hmac
+print_pkey_gettable_params
+read_key
+read_pubkey
+read_ec_pubkey
+read_key_from_der
+read_key_from_pem
+read_pubkey_from_der
+read_pubkey_from_pem
+rsa_oaep_decrypt
+rsa_oaep_encrypt
+symmetric_decrypt
+symmetric_encrypt
+write_key_to_der
+write_key_to_pem
+write_pubkey_to_der
+write_pubkey_to_pem
+digest_array
+);
 
-evp_pkey_from_point_hex
-evp_pkey_from_priv_hex
-
-sn_point2hex
-sn_hex2point
-aead_encrypt_split
-random_bn
+our @PMF = qw(
+hkdf
+hkdf_expand
+hkdf_extract
+hmac
 i2osp
+random_bn
+sn_point2hex
 generate_ec_key
-get_ec_params
+get_ec_params 
+digest
+);
+#aead_encrypt_split
 
-OBJ_sn2nid
-EVP_PKEY_get1_EC_KEY
-EVP_MD_get_block_size
-EVP_MD_get_size
-EVP_get_digestbyname
-EC_GROUP_get_curve
-EC_POINT_set_affine_coordinates
-EC_POINT_get_affine_coordinates
-); 
-
+our @EXPORT = ( @OSSLF, @XSF, @PMF ); 
 
 our @EXPORT_OK = @EXPORT;
 
 require XSLoader;
 XSLoader::load( 'Crypt::OpenSSL::Base::Func', $VERSION );
+
+sub digest {
+    my ($digest_name, @arr) = @_;
+    return digest_array($digest_name, \@arr);
+}
 
 sub hkdf {
 # define EVP_KDF_HKDF_MODE_EXTRACT_AND_EXPAND  0
@@ -103,15 +116,6 @@ sub hkdf_expand {
 }
 
 
-sub sn_hex2point {
-    my ($group_name, $point_hex) = @_;
-
-    my $ec_params_r = get_ec_params($group_name);
-    #my $point_bn = Crypt::OpenSSL::Bignum->new_from_hex($point_hex);
-    my $P = hex2point($ec_params_r->{group}, $point_hex);
-
-    return $P;
-}
 
 sub sn_point2hex {
     my ($group_name, $point, $point_compress_t) = @_;
@@ -123,12 +127,12 @@ sub sn_point2hex {
 }
 
 
-sub aead_encrypt_split {
-    my ($res, $tag_len) = @_;
-    my $ciphertext = substr $res, 0, length($res) - $tag_len;
-    my $tag = substr $res, length($res) - $tag_len, $tag_len;
-    return ($ciphertext, $tag);
-}
+#sub aead_encrypt_split {
+    #my ($res, $tag_len) = @_;
+    #my $ciphertext = substr $res, 0, length($res) - $tag_len;
+    #my $tag = substr $res, length($res) - $tag_len, $tag_len;
+    #return ($ciphertext, $tag);
+#}
 
 sub random_bn {
     my ($Nn) = @_; 
@@ -160,84 +164,29 @@ sub i2osp {
 sub generate_ec_key {
     my ( $group_name, $priv_hex ) = @_;
 
-    my $group;
-    if(! ref($group_name)){
-        my $nid   = OBJ_sn2nid( $group_name );
-        $group = Crypt::OpenSSL::EC::EC_GROUP::new_by_curve_name( $nid );
-    }else{
-        $group = $group_name;
-    }
+    my $priv_pkey = gen_ec_key($group_name, $priv_hex || '');
+    $priv_hex = read_key($priv_pkey);
+    my $priv_bn  = Crypt::OpenSSL::Bignum->new_from_hex($priv_hex);
+    #print "hex:$priv_hex,\n";
 
-    my $ctx   = Crypt::OpenSSL::Bignum::CTX->new();
-
-    my $priv_key = Crypt::OpenSSL::EC::EC_KEY::new();
-    $priv_key->set_group( $group );
-
-    my $priv_bn ; 
-
-    if(! $priv_hex){
-        $priv_key->generate_key();
-        $priv_bn = $priv_key->get0_private_key();
-    }else{
-     $priv_bn = Crypt::OpenSSL::Bignum->new_from_hex($priv_hex);
-    }
-    my $priv_pkey = evp_pkey_from_priv_hex( $group, $priv_bn->to_hex );
-
-    #my $pub_point = Crypt::OpenSSL::EC::EC_POINT::new( $group );
-    #my $zero = Crypt::OpenSSL::Bignum->zero;
-    #Crypt::OpenSSL::EC::EC_POINT::mul( $group, $pub_point, $zero, $G, $priv_pkey, $ctx );
-
-    my $ec_key = EVP_PKEY_get1_EC_KEY($priv_pkey);
-
-    my $pub_point      = $ec_key->get0_public_key();
-    my $pub_hex  = Crypt::OpenSSL::EC::EC_POINT::point2hex( $group, $pub_point, 4, $ctx );
+    my $pub_pkey = export_ec_pubkey($priv_pkey);
+    my $pub_hex = read_ec_pubkey($pub_pkey, 1);
+    #print "hex:$pub_hex,\n";
     my $pub_bin  = pack( "H*", $pub_hex );
-    my $pub_pkey = evp_pkey_from_point_hex( $group, $pub_hex, $ctx );
 
-    #EVP_PKEY_new_raw_public_key(int type, ENGINE *e, const unsigned char *key, size_t keylen);
+    my $pub_point =hex2point($group_name, $pub_hex);
 
     return {
-        priv_pkey => $priv_pkey, priv_key => $priv_key, priv_bn => $priv_bn,
-        pub_pkey => $pub_pkey, pub_point => $pub_point, pub_hex => $pub_hex, pub_bin => $pub_bin,
+        name => $group_name, 
+        priv_pkey => $priv_pkey, 
+        #priv_key => $priv_key, 
+        priv_bn => $priv_bn,
+        pub_pkey => $pub_pkey, 
+        pub_point => $pub_point, 
+        pub_hex => $pub_hex, 
+        pub_bin => $pub_bin,
     };
 
-    #my $priv_pkey = gen_ec_key($group_name, $priv_hex);
-    #$priv_hex = read_ec_key($priv_pkey);
-    #my $priv_bn = Crypt::OpenSSL::Bignum->new_from_hex($priv_hex);
-    
-        
-    #my $pub_pkey = read_ec_pubkey($priv_pkey);
-    #my $pub_hex2 = export_pubkey($priv_pkey);
-    ### $pub_hex2
-    #if(!$pub_hex){
-        #print "fail export pubkey\n";
-    #}else{
-        #print $pub_hex, "\n";
-    #}
-    #my $pub_pkey = gen_ec_pubkey($group_name, $pub_hex);
-    #my $pub_bin = pack("H*", $pub_hex);
-
-    #my $nid   = OBJ_sn2nid( $group_name );
-    #my $group = Crypt::OpenSSL::EC::EC_GROUP::new_by_curve_name( $nid );
-    #my $ctx   = Crypt::OpenSSL::Bignum::CTX->new();
-
-
-    #my $ec_key = EVP_PKEY_get1_EC_KEY($priv_pkey);
-    #### $ec_key
-    #my $pub_point      = $ec_key->get0_public_key();
-    #### $pub_point
-    #my $pub_hex  = sn_point2hex($group_name, $pub_point);
-    #### $pub_hex
-    #my $pub_bin  = pack( "H*", $pub_hex );
-    #### $pub_bin
-    #my $pub_pkey = gen_ec_pubkey( $group_name, $pub_hex );
-
-    #### $pub_pkey
-
-    #return {
-        #priv_pkey => $priv_pkey, priv_hex => $priv_hex, priv_bn => $priv_bn, 
-        #pub_pkey => $pub_pkey, pub_hex => $pub_hex, pub_bin => $pub_bin, pub_point => $pub_point,
-    #};
 } ## end sub generate_ec_key
 
 sub get_ec_params {

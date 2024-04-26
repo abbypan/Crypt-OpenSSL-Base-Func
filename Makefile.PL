@@ -24,6 +24,7 @@ WriteMakefile(
         'Test::More' => 0.01,
         'bignum' => 0.52, 
     }, 
+    EXE_FILES => [ 'bin/ec_conv.pl' ], 
     'LIBS'   => [openssl_lib_paths() . ' -lssl -lcrypto'],
     DEFINE            => '-DPERL5 -DOPENSSL_NO_KRB5',
     'INC' => openssl_inc_paths(),    # e.g., '-I/usr/include/other'
